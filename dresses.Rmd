@@ -341,12 +341,14 @@ To be continued...
 - Apply neuralnet() :)
 - Check if there's faster way to calculate prediction quality as a single number
 - Use actual sales numbers instead of "Recommendation" factor
+- For duplicated Dress_IDs, see if low/Low spelling should be fixed
 - Try to predict ratings instead of sales
 - See if "too many weights" can be solved for nnet (and how it worked before for
 me)
 - See if predict() function is of nnet library or something more universal
 - Try to apply compression algorithms to reveal attributes that affect price
 more than others (is it possible at all with factor-based data?)
+- How price affect the sales, for example?
 - Learn alternative ways to repack factors to numeric columns (something about
 model.matrix() and nnet's class.ind()
 
