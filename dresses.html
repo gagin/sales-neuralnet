@@ -120,7 +120,7 @@ data&lt;-read.xlsx(xls,1) # second argument is tab number</code></pre>
 <div id="data-review" class="section level2">
 <h2>Data review</h2>
 <p>Let’s review our dataset - first its first five lines, then data structure of the dataset in R, then table dimensions.</p>
-<pre class="r"><code># Let's look at it
+<pre class="r"><code># Top five rows
 head(data)</code></pre>
 <pre><code>##     Dress_ID    Style   Price Rating Size Season NeckLine SleeveLength
 ## 1 1006032852     Sexy     Low    4.6    M Summer   o-neck    sleevless
@@ -143,7 +143,8 @@ head(data)</code></pre>
 ## 4              1
 ## 5              0
 ## 6              0</code></pre>
-<pre class="r"><code>str(data)</code></pre>
+<pre class="r"><code># Memory object structure
+str(data)</code></pre>
 <pre><code>## 'data.frame':    500 obs. of  14 variables:
 ##  $ Dress_ID      : num  1.01e+09 1.21e+09 1.19e+09 9.66e+08 8.76e+08 ...
 ##  $ Style         : Factor w/ 13 levels &quot;bohemian&quot;,&quot;Brief&quot;,..: 11 3 12 2 4 1 3 7 6 1 ...
@@ -159,7 +160,8 @@ head(data)</code></pre>
 ##  $ Decoration    : Factor w/ 25 levels &quot;applique&quot;,&quot;beading&quot;,..: 21 21 14 8 3 14 14 12 2 14 ...
 ##  $ Pattern.Type  : Factor w/ 15 levels &quot;animal&quot;,&quot;character&quot;,..: 1 1 12 12 3 12 13 9 13 9 ...
 ##  $ Recommendation: num  1 0 0 1 0 0 0 0 1 1 ...</code></pre>
-<pre class="r"><code>dim(data)</code></pre>
+<pre class="r"><code># Frame dimensions
+dim(data)</code></pre>
 <pre><code>## [1] 500  14</code></pre>
 <p>So we have 500 lines in the table. In the data language it means we have 500 observations - with a given set of dress’ attributes, does it sell or not.</p>
 <div id="what-is-dress_id" class="section level3">
@@ -207,11 +209,13 @@ df&lt;-as.data.frame(
   lapply(
     dplyr::select(data,-Dress_ID,-rnumber),
     as.factor))
-df$Rating&lt;-as.numeric(df$Rating)</code></pre>
+df$Rating&lt;-as.numeric(df$Rating)
+# select() above needed direct reference to dplyr library because libraries
+# like to overwrite this function very much</code></pre>
 <p>It’s time to train the neural network. This code creates an object which basically includes a set of coefficients to be applied to input parameters to predict (calculate) the outcome. This set of coefficients is the substance of the trained neural network.</p>
 <p>It takes some time to train a neural network, but once it’s trained, predictions can be calculated very fast and “cheap”. In this case the dataset is small, and network is simple, so it trains also fast.</p>
-<pre class="r"><code>neurons&lt;-5 #We'll play with this number below
-df1&lt;-df #Make clean copy which can be mutilated if needed - will be used later.
+<pre class="r"><code>neurons&lt;-5 # we'll play with this number below
+df1&lt;-df # make clean copy which can be mutilated if needed - will be used later
 seed&lt;-3 # initialize randomizer for reproducibility
 # We'll set seed every time randomizer is in play to reset it after previous use
 set.seed(seed)
@@ -239,7 +243,7 @@ table(df1$Recommendation,guess)</code></pre>
 <p>Well, most zeroes are classified as zeroes and vice versa. Let’s calculate a percentage of the correct guesses.</p>
 <pre class="r"><code># We'll use this later, let's make a reusable function out of it
 # Although I'm sure there's a simpler way to do this, some basic ready-made
-# R function, which I'm just don't know. Well, I'll learn that later then.
+# R function, which I'm just don't know. Well, I'll learn that later then
 qualify&lt;-function(real,guess){
   check&lt;-table(real,guess)
   good.ones&lt;-check[1,1]+check[2,2]
@@ -334,7 +338,7 @@ df1&lt;-dplyr::select(df,-Rating)
 trainers&lt;-df1[trainset,]
 testers&lt;-df1[-trainset,]
 set.seed(seed) 
-#nn&lt;-nnet(Recommendation ~ ., trainers, size=neurons)
+nn&lt;-nnet(Recommendation ~ ., trainers, size=neurons)
 guess&lt;-predict(nn, testers, type = &quot;class&quot;)
 quality&lt;-qualify(testers$Recommendation,guess)
 # Record for later comparison
@@ -346,11 +350,11 @@ nnets.all&lt;-rbind(nnets.all,nnets)</code></pre>
 <div id="using-neuralnet-library" class="section level2">
 <h2>Using neuralnet() library</h2>
 <p>R’s neuralnet() requires numeric input, so let’s convert it.</p>
-<pre class="r"><code># convert every column to character to prevent loss of the data when gathering
+<pre class="r"><code># Convert every column to character to prevent loss of the data when gathering
 # square brackets keep data.frame type
 data[]&lt;-lapply(data,as.character)
 
-# repack factors to numeric columns
+# Repack factors to numeric columns
 # I know there are faster ways to do it, but this one is more transparent to me
 bins&lt;-data %&gt;% # piped functions follow
     
@@ -384,7 +388,7 @@ bins$Dress_ID&lt;-as.factor(bins$Dress_ID)</code></pre>
 <li>Try to apply compression algorithms to reveal attributes that affect price more than others (is it possible at all with factor-based data?)</li>
 <li>Learn alternative ways to repack factors to numeric columns (something about model.matrix() and nnet’s class.ind()</li>
 </ul>
-<pre class="r"><code># some code for future lookup
+<pre class="r"><code># Some code for future lookup
 model.matrix(~ . + 0, 
              data=dfactors,
              contrasts.arg = lapply(data, contrasts, contrasts=FALSE))</code></pre>

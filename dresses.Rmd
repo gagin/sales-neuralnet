@@ -88,9 +88,13 @@ Let's review our dataset - first its first five lines, then data structure
 of the dataset in R, then table dimensions.
 
 ```{r}
-# Let's look at it
+# Top five rows
 head(data)
+
+# Memory object structure
 str(data)
+
+# Frame dimensions
 dim(data)
 ```
 
@@ -158,6 +162,8 @@ df<-as.data.frame(
     dplyr::select(data,-Dress_ID,-rnumber),
     as.factor))
 df$Rating<-as.numeric(df$Rating)
+# select() above needed direct reference to dplyr library because libraries
+# like to overwrite this function very much
 ```
 
 It's time to train the neural network. This code creates an object which
@@ -171,8 +177,8 @@ calculated very fast and "cheap". In this case the dataset is small, and
 network is simple, so it trains also fast.
 
 ```{r}
-neurons<-5 #We'll play with this number below
-df1<-df #Make clean copy which can be mutilated if needed - will be used later.
+neurons<-5 # we'll play with this number below
+df1<-df # make clean copy which can be mutilated if needed - will be used later
 seed<-3 # initialize randomizer for reproducibility
 # We'll set seed every time randomizer is in play to reset it after previous use
 set.seed(seed)
@@ -187,7 +193,7 @@ a percentage of the correct guesses.
 ```{r}
 # We'll use this later, let's make a reusable function out of it
 # Although I'm sure there's a simpler way to do this, some basic ready-made
-# R function, which I'm just don't know. Well, I'll learn that later then.
+# R function, which I'm just don't know. Well, I'll learn that later then
 qualify<-function(real,guess){
   check<-table(real,guess)
   good.ones<-check[1,1]+check[2,2]
@@ -285,7 +291,7 @@ df1<-dplyr::select(df,-Rating)
 trainers<-df1[trainset,]
 testers<-df1[-trainset,]
 set.seed(seed) 
-#nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+nn<-nnet(Recommendation ~ ., trainers, size=neurons)
 guess<-predict(nn, testers, type = "class")
 quality<-qualify(testers$Recommendation,guess)
 # Record for later comparison
@@ -302,11 +308,11 @@ R's neuralnet() requires numeric input, so let's convert it.
 
 ```{r}
 
-# convert every column to character to prevent loss of the data when gathering
+# Convert every column to character to prevent loss of the data when gathering
 # square brackets keep data.frame type
 data[]<-lapply(data,as.character)
 
-# repack factors to numeric columns
+# Repack factors to numeric columns
 # I know there are faster ways to do it, but this one is more transparent to me
 bins<-data %>% # piped functions follow
     
@@ -345,7 +351,7 @@ more than others (is it possible at all with factor-based data?)
 model.matrix() and nnet's class.ind()
 
 ```{r, eval=FALSE}
-# some code for future lookup
+# Some code for future lookup
 model.matrix(~ . + 0, 
              data=dfactors,
              contrasts.arg = lapply(data, contrasts, contrasts=FALSE))
