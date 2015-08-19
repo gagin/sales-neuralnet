@@ -70,7 +70,7 @@ img {
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <p>To demonstrate how previous sales data can be used to predict future sales, we’ll apply neural network library in R language to a dataset from UCI machine learning depository - <a href="http://archive.ics.uci.edu/ml/datasets/Dresses_Attribute_Sales">Dresses_Attribute_Sales Data Set</a></p>
-<p>The idea is to potentially apply the same method to improve other areas of sales. Say, we can come up with a set of attributes that describe qualities of a product page in a eCommerce store. Then, if these qualities do affect sales, we should be able to predict possible results of the product page changes.</p>
+<p>The idea is to potentially apply the same method to improve other areas of sales. Say, we can come up with a set of attributes that describe qualities of a product page in an eCommerce store. Then, if these qualities do affect sales, we should be able to predict possible results of the product page changes.</p>
 <p>I don’t really expect this to work, but this is an interesting exercise anyway.</p>
 <div id="attribute-information-for-the-dataset" class="section level3">
 <h3>Attribute Information for the dataset:</h3>
@@ -119,7 +119,7 @@ data&lt;-read.xlsx(xls,1) # second argument is tab number</code></pre>
 </div>
 <div id="data-review" class="section level2">
 <h2>Data review</h2>
-<p>Let’s review now what is our dataset - its first five lines, then data structure of the dataset in R, then table dimensions.</p>
+<p>Let’s review our dataset - first its first five lines, then data structure of the dataset in R, then table dimensions.</p>
 <pre class="r"><code># Let's look at it
 head(data)</code></pre>
 <pre><code>##     Dress_ID    Style   Price Rating Size Season NeckLine SleeveLength
@@ -164,7 +164,7 @@ head(data)</code></pre>
 <p>So we have 500 lines in the table. In the data language it means we have 500 observations - with a given set of dress’ attributes, does it sell or not.</p>
 <div id="what-is-dress_id" class="section level3">
 <h3>What is Dress_ID?</h3>
-<p>We have two columns that are different from other styles - Dress_ID and Rating. Supposedly the first is an unique id of a dress for which we observe the recommendation based on sales level. Let’s check this assumption. Are Dress_IDs unique for each record?</p>
+<p>We have two columns that are different from other styles - Dress_ID and Rating. Supposedly the first is a unique id of a dress for which we observe the recommendation based on sales level. Let’s check this assumption. Are Dress_IDs unique for each record?</p>
 <p><em>It shouldn’t be said while presenting results, but as this document is about procedure, it should be noted that this particular section was added later during the analysis when attempt of tidying data showed that it’s not actually unique, and so we need to understand what it means.</em></p>
 <pre class="r"><code>length(unique(data$Dress_ID))</code></pre>
 <pre><code>## [1] 475</code></pre>
@@ -238,6 +238,8 @@ table(df1$Recommendation,guess)</code></pre>
 ##   1   8 199</code></pre>
 <p>Well, most zeroes are classified as zeroes and vice versa. Let’s calculate a percentage of the correct guesses.</p>
 <pre class="r"><code># We'll use this later, let's make a reusable function out of it
+# Although I'm sure there's a simpler way to do this, some basic ready-made
+# R function, which I'm just don't know. Well, I'll learn that later then.
 qualify&lt;-function(real,guess){
   check&lt;-table(real,guess)
   good.ones&lt;-check[1,1]+check[2,2]
@@ -247,7 +249,7 @@ qualify&lt;-function(real,guess){
 quality&lt;-qualify(df1$Recommendation,guess)
 print(quality)</code></pre>
 <pre><code>## [1] &quot;91%&quot;</code></pre>
-<p>OK, so 91% doesn’t seem too bad for just 5 neurons. But what if we separate training and test sets?<br />First, let’s select lines we’ll use for training, and rest will for for testing. Let’s use 80% of data for training purposes.</p>
+<p>OK, so 91% doesn’t seem too bad for just 5 neurons. But what if we separate training and test sets?<br />First, let’s select lines we’ll use for training, and rest will go for testing. Let’s use 80% of data for training purposes.</p>
 <pre class="r"><code>nr&lt;-dim(df)[1] # number of observations
 share&lt;-0.8 # this is our 80% parameter
 set.seed(seed)
@@ -283,7 +285,7 @@ nnets</code></pre>
 ##     &quot;5&quot;   &quot;Yes&quot;   &quot;60%&quot;</code></pre>
 <pre class="r"><code>nnets.all&lt;-nnets</code></pre>
 <p>Well, just 60%. We could have just flipped a coin.</p>
-<p>Moreover, it included Rating, which is kinda cheating. Theoretically speaking, there’s a confounding variable - people rate and buy what they like. Let’s drop the rating.</p>
+<p>Moreover, it included Rating, which is kind of cheating. Theoretically speaking, there’s a confounding variable - people both rate and buy what they like. Let’s drop the rating.</p>
 <pre class="r"><code>neurons&lt;-5 
 df1&lt;-dplyr::select(df,-Rating)
 trainers&lt;-df1[trainset,]
@@ -312,7 +314,7 @@ nnets</code></pre>
 <pre><code>## Neurons  Rating Quality 
 ##     &quot;5&quot;    &quot;No&quot;   &quot;61%&quot;</code></pre>
 <pre class="r"><code>nnets.all&lt;-rbind(nnets.all,nnets)</code></pre>
-<p>Suprisingly, it didn’t drop at all. It could - if you play with the randomizer seed, you’ll see. But not by much. Probably the Rating wasn’t affecting sales as strong as we expected.</p>
+<p>Surprisingly, it didn’t drop at all. It could - if you play with the randomizer seed, you’ll see. But not by much. Probably the Rating wasn’t affecting sales as strong as we expected.</p>
 <p>Let’s increase number of neurons. First, with Rating.</p>
 <pre class="r"><code>neurons&lt;-30 
 df1&lt;-df
@@ -326,7 +328,7 @@ quality&lt;-qualify(testers$Recommendation,guess)
 nnets&lt;-c(Neurons=neurons,Rating=&quot;Yes&quot;,Quality=quality)
 nnets
 nnets.all&lt;-rbind(nnets.all,nnets)</code></pre>
-<p>Hm… Nnet() couldn’t handle it, says “too many (4621) weights”. I’ve commented out What if we drop the rating?</p>
+<p>Hmm… Nnet() couldn’t handle it, says “too many (4621) weights”. I’ve commented out What if we drop the rating?</p>
 <pre class="r"><code>neurons&lt;-50 
 df1&lt;-dplyr::select(df,-Rating)
 trainers&lt;-df1[trainset,]
@@ -348,7 +350,8 @@ nnets.all&lt;-rbind(nnets.all,nnets)</code></pre>
 # square brackets keep data.frame type
 data[]&lt;-lapply(data,as.character)
 
-# finally, repack factors to numeric columns
+# repack factors to numeric columns
+# I know there are faster ways to do it, but this one is more transparent to me
 bins&lt;-data %&gt;% # piped functions follow
     
   # make it narrow, don't touch numeric variables and IDs
@@ -368,6 +371,23 @@ bins[]&lt;-lapply(bins,as.numeric)
 bins$Dress_ID&lt;-as.factor(bins$Dress_ID)</code></pre>
 <p>Now we have 174 columns instead of 15, and they are all numeric, except for ID.</p>
 <p>To be continued…</p>
+</div>
+<div id="to-do" class="section level2">
+<h2>To do</h2>
+<ul>
+<li>Apply neuralnet() :)</li>
+<li>Check if there’s faster way to calculate prediction quality as a single number</li>
+<li>Use actual sales numbers instead of “Recommendation” factor</li>
+<li>Try to predict ratings instead of sales</li>
+<li>See if “too many weights” can be solved for nnet (and how it worked before for me)</li>
+<li>See if predict() function is of nnet library or something more universal</li>
+<li>Try to apply compression algorithms to reveal attributes that affect price more than others (is it possible at all with factor-based data?)</li>
+<li>Learn alternative ways to repack factors to numeric columns (something about model.matrix() and nnet’s class.ind()</li>
+</ul>
+<pre class="r"><code># some code for future lookup
+model.matrix(~ . + 0, 
+             data=dfactors,
+             contrasts.arg = lapply(data, contrasts, contrasts=FALSE))</code></pre>
 </div>
 
 

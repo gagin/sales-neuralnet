@@ -14,7 +14,7 @@ Set](http://archive.ics.uci.edu/ml/datasets/Dresses_Attribute_Sales)
 
 The idea is to potentially apply the same method to improve other areas
 of sales. Say, we can come up with a set of attributes that describe qualities
-of a product page in a eCommerce store. Then, if these qualities do affect
+of a product page in an eCommerce store. Then, if these qualities do affect
 sales, we should be able to predict possible results of the product page
 changes.
 
@@ -84,7 +84,7 @@ data<-read.xlsx(xls,1) # second argument is tab number
 
 ## Data review
 
-Let's review now what is our dataset - its first five lines, then data structure
+Let's review our dataset - first its first five lines, then data structure
 of the dataset in R, then table dimensions.
 
 ```{r}
@@ -100,7 +100,7 @@ observations - with a given set of dress' attributes, does it sell or not.
 ### What is Dress_ID?
 
 We have two columns that are different from other styles - Dress_ID and Rating.
-Supposedly the first is an unique id of a dress for which we observe the
+Supposedly the first is a unique id of a dress for which we observe the
 recommendation based on sales level. Let's check this assumption. Are Dress_IDs
 unique for each record?
 
@@ -186,6 +186,8 @@ a percentage of the correct guesses.
 
 ```{r}
 # We'll use this later, let's make a reusable function out of it
+# Although I'm sure there's a simpler way to do this, some basic ready-made
+# R function, which I'm just don't know. Well, I'll learn that later then.
 qualify<-function(real,guess){
   check<-table(real,guess)
   good.ones<-check[1,1]+check[2,2]
@@ -198,7 +200,7 @@ print(quality)
 
 OK, so 91% doesn't seem too bad for just 5 neurons.
 But what if we separate training and test sets?  
-First, let's select lines we'll use for training, and rest will for for testing.
+First, let's select lines we'll use for training, and rest will go for testing.
 Let's use 80% of data for training purposes.
 
 ```{r}
@@ -233,8 +235,8 @@ nnets.all<-nnets
 
 Well, just 60%. We could have just flipped a coin.
 
-Moreover, it included Rating, which is kinda cheating. Theoretically speaking,
-there's a confounding variable - people rate and buy what they like. Let's
+Moreover, it included Rating, which is kind of cheating. Theoretically speaking,
+there's a confounding variable - people both rate and buy what they like. Let's
 drop the rating.
 
 ```{r}
@@ -252,7 +254,7 @@ nnets
 nnets.all<-rbind(nnets.all,nnets)
 ```
 
-Suprisingly, it didn't drop at all. It could - if you play with the randomizer
+Surprisingly, it didn't drop at all. It could - if you play with the randomizer
 seed, you'll see. But not by much. Probably the Rating wasn't affecting sales
 as strong as we expected.
 
@@ -273,7 +275,7 @@ nnets
 nnets.all<-rbind(nnets.all,nnets)
 ```
 
-Hm... Nnet() couldn't handle it, says "too many (4621) weights".
+Hmm... Nnet() couldn't handle it, says "too many (4621) weights".
 I've commented out
 What if we drop the rating?
 
@@ -304,7 +306,8 @@ R's neuralnet() requires numeric input, so let's convert it.
 # square brackets keep data.frame type
 data[]<-lapply(data,as.character)
 
-# finally, repack factors to numeric columns
+# repack factors to numeric columns
+# I know there are faster ways to do it, but this one is more transparent to me
 bins<-data %>% # piped functions follow
     
   # make it narrow, don't touch numeric variables and IDs
@@ -326,4 +329,25 @@ bins$Dress_ID<-as.factor(bins$Dress_ID)
 Now we have 174 columns instead of 15, and they are all numeric, except for ID.
 
 To be continued...
+
+## To do
+
+- Apply neuralnet() :)
+- Check if there's faster way to calculate prediction quality as a single number
+- Use actual sales numbers instead of "Recommendation" factor
+- Try to predict ratings instead of sales
+- See if "too many weights" can be solved for nnet (and how it worked before for
+me)
+- See if predict() function is of nnet library or something more universal
+- Try to apply compression algorithms to reveal attributes that affect price
+more than others (is it possible at all with factor-based data?)
+- Learn alternative ways to repack factors to numeric columns (something about
+model.matrix() and nnet's class.ind()
+
+```{r, eval=FALSE}
+# some code for future lookup
+model.matrix(~ . + 0, 
+             data=dfactors,
+             contrasts.arg = lapply(data, contrasts, contrasts=FALSE))
+```
 
