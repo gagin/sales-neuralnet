@@ -1,0 +1,321 @@
+---
+title: "Sales machine learning data"
+author: "Alex Gaggin"
+date: "Tuesday, August 18, 2015"
+output: html_document
+---
+
+## Introduction
+
+To demonstrate how historical sales data can be used to predict future seasonal
+demand, we'll apply neural network library in R language to a dataset from
+UCI machine learning depository - [Dresses_Attribute_Sales Data 
+Set](http://archive.ics.uci.edu/ml/datasets/Dresses_Attribute_Sales)
+
+###Attribute Information:
+
+- Style: Bohemia,brief,casual,cute,fashion,flare,novelty,OL,party,sexy,vintage,work. 
+- Price:Low,Average,Medium,High,Very-High 
+- Rating:1-5 
+- Size:S,M,L,XL,Free 
+- Season:Autumn,winter,Spring,Summer 
+- NeckLine:O-neck,backless,board-neck,Bowneck,halter,mandarin-collor,open,peterpan-collor,ruffled,scoop,slash-neck,square-collar,sweetheart,turndowncollar,V-neck. 
+- SleeveLength:full,half,halfsleeves,butterfly,sleveless,short,threequarter,turndown,null 
+- waiseline:dropped,empire,natural,princess,null. 
+- Material:wool,cotton,mix etc 
+- FabricType:shafoon,dobby,popline,satin,knitted,jersey,flannel,corduroy etc 
+- Decoration:applique,beading,bow,button,cascading,crystal,draped,embroridary,feathers,flowers etc 
+- Pattern type: solid,animal,dot,leapard etc 
+- Recommendation:0,1 
+
+## Data loading and processing
+
+This document is also supposed to demonstrate how sales data can be processed
+in R, so various data processing steps are explained where possible.
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+# Let's load libraries first
+# Use call like install.packages("dplyr"), if you miss any of the libraries.
+library(dplyr) # for column selection and handy function piping syntax
+library(tidyr) # for making numeric columns from style variables
+library(nnet) # this neural net library allows for one layer of hidden neurons
+library(neuralnet) # this one allows several layers, but work only with numbers
+# Update Java to 64bit version if xlsx library returns Java error
+# http://javadl.sun.com/webapps/download/AutoDL?BundleId=109708
+library(xlsx) # for reading Excel files
+```
+
+First, we change working directory and download the dataset.
+
+```{r}
+setwd("/Users/User/Documents/sales-neuralnet")
+file="Dresses_Attribute_Sales.rar"
+src=paste0("http://archive.ics.uci.edu/ml/machine-learning-databases/00289/",
+           file)
+if(!file.exists(file)) download.file(src,file)
+```
+
+**Now you have to unrar Dresses_Attribute_Sales.rar to the current folder! - 
+it's a manual step, not reproducible by the script**  
+As it seems there's no easy way to unrar in R, so do this step outside of R.
+
+We see that there's a file where for different properties of a dress there's
+a recommendation result - does it sell or does it not. As authors explain,
+"This dataset contain Attributes of dresses and their recommendations according
+to their sales." There's also another spreadsheet where sales data is provided.
+For now we'll use Recommendation parameter directly, sales numbers can be
+used later.
+
+```{r, cache=TRUE}
+# create platform-independent file path
+xls=file.path("Dresses_Attribute_Sales","Attribute DataSet.xlsx")
+
+# read data from excel file to a data frame
+data<-read.xlsx(xls,1) # second argument is tab number
+```
+
+## Data review
+
+Let's review now what is our dataset - its first five lines, then data structure
+of the dataset in R, then table dimensions.
+
+```{r}
+# Let's look at it
+head(data)
+str(data)
+dim(data)
+```
+
+So we have 500 lines in the table. In the data language it means we have 500
+observations - with a given set of dress' attributes, does it sell or not.
+
+### What is Dress_ID?
+
+We have two columns that are different from other styles - Dress_ID and Rating.
+Supposedly the first is an unique id of a dress for which we observe the
+recommendation based on sales level. Let's check this assumption. Are Dress_IDs
+unique for each record?
+
+*It shouldn't be said while presenting
+results, but as this document is about procedure, it should be noted that
+this particular section was added later during the analysis when attempt
+of tidying data showed that it's not actually unique, and so we need to
+understand what it means.*
+
+```{r}
+length(unique(data$Dress_ID))
+length(data$Dress_ID)
+```
+
+It looks some dresses have several rows. Let's look at them.
+
+```{r}
+repeats<-table(data$Dress_ID)
+dupes<-data[data$Dress_ID %in% names(repeats[repeats>1]),] %>%
+  arrange(Dress_ID)
+head(dupes)
+```
+
+Apparently, each dress (with the same Dress_ID) can have variations - same
+dress with different sleeves, from different materials. It doesn't make sense
+to make Dress_ID a style parameter (see below), so we'll just ignore it,
+and will treat same dress with variations as a different dresses.
+
+```{r}
+# Let's add explicit unique row numbers to represent observations
+data$rnumber<-1:nrow(data)
+```
+
+### What is Rating?
+
+Presumably the rating is average grade given to a dress by store's customers. We
+should be wary about this parameter, as can be correlated to the sales too
+directly.
+What is worse, for new inventory it won't be available. So let's keep an eye on
+it.
+
+## Predictions using nnet() library
+
+Nnet() is a standard R library, it's even included in the basic distribution
+package and doesn't need to be installed separately. It also great because
+it allows to analyze data with so called "factor" variables - categorical
+ones. For example, what material a dress is made from - cotton, silk, etc.
+Its drawback is that it only allows for a single hidden layer of neurons.
+
+```{r}
+library(nnet)
+# Make sure data types are good for nnet() - factors and numbers
+df<-as.data.frame(
+  lapply(
+    dplyr::select(data,-Dress_ID,-rnumber),
+    as.factor))
+df$Rating<-as.numeric(df$Rating)
+```
+
+It's time to train the neural network. This code creates an object which
+basically includes a set of coefficients to be applied to input parameters
+to predict (calculate) the outcome. This
+set of coefficients is the substance of the trained neural network.
+
+It takes
+some time to train a neural network, but once it's trained, predictions can be
+calculated very fast and "cheap". In this case the dataset is small, and
+network is simple, so it trains also fast.
+
+```{r}
+neurons<-5 #We'll play with this number below
+df1<-df #Make clean copy which can be mutilated if needed - will be used later.
+seed<-3 # initialize randomizer for reproducibility
+# We'll set seed every time randomizer is in play to reset it after previous use
+set.seed(seed)
+nn<-nnet(Recommendation ~ ., df1, size=neurons)
+guess<-predict(nn, df1, type = "class")
+table(df1$Recommendation,guess)
+```
+
+Well, most zeroes are classified as zeroes and vice versa. Let's calculate
+a percentage of the correct guesses.
+
+```{r}
+# We'll use this later, let's make a reusable function out of it
+qualify<-function(real,guess){
+  check<-table(real,guess)
+  good.ones<-check[1,1]+check[2,2]
+  bad.ones<-check[1,2]+check[2,1]
+  paste0(as.character(round(100*good.ones/(good.ones+bad.ones))),'%')
+  }
+quality<-qualify(df1$Recommendation,guess)
+print(quality)
+```
+
+OK, so 91% doesn't seem too bad for just 5 neurons.
+But what if we separate training and test sets?  
+First, let's select lines we'll use for training, and rest will for for testing.
+Let's use 80% of data for training purposes.
+
+```{r}
+nr<-dim(df)[1] # number of observations
+share<-0.8 # this is our 80% parameter
+set.seed(seed)
+trainset<-sample.int(nr,round(share*nr))
+```
+
+The trainset variable now has numbers of observations we'll use for training.
+Let's split the dataset in two.
+
+```{r}
+neurons<-5 
+df1<-df
+trainers<-df1[trainset,]
+testers<-df1[-trainset,]
+set.seed(seed)              
+nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+```
+
+Now let's see what happens to our prediction quality.
+
+```{r}
+guess<-predict(nn, testers, type = "class")
+quality<-qualify(testers$Recommendation,guess)
+# Record for later comparison
+nnets<-c(Neurons=neurons,Rating="Yes",Quality=quality)
+nnets
+nnets.all<-nnets
+```
+
+Well, just 60%. We could have just flipped a coin.
+
+Moreover, it included Rating, which is kinda cheating. Theoretically speaking,
+there's a confounding variable - people rate and buy what they like. Let's
+drop the rating.
+
+```{r}
+neurons<-5 
+df1<-dplyr::select(df,-Rating)
+trainers<-df1[trainset,]
+testers<-df1[-trainset,]
+set.seed(seed) 
+nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+guess<-predict(nn, testers, type = "class")
+quality<-qualify(testers$Recommendation,guess)
+# Record for later comparison
+nnets<-c(Neurons=neurons,Rating="No",Quality=quality)
+nnets
+nnets.all<-rbind(nnets.all,nnets)
+```
+
+Suprisingly, it didn't drop at all. It could - if you play with the randomizer
+seed, you'll see. But not by much. Probably the Rating wasn't affecting sales
+as strong as we expected.
+
+Let's increase number of neurons. First, with Rating.
+
+```{r, eval=FALSE}
+neurons<-30 
+df1<-df
+trainers<-df1[trainset,]
+testers<-df1[-trainset,]
+set.seed(seed) 
+nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+guess<-predict(nn, testers, type = "class")
+quality<-qualify(testers$Recommendation,guess)
+# Record for later comparison
+nnets<-c(Neurons=neurons,Rating="Yes",Quality=quality)
+nnets
+nnets.all<-rbind(nnets.all,nnets)
+```
+
+Hm... Nnet() couldn't handle it, says "too many (4621) weights".
+I've commented out
+What if we drop the rating?
+
+```{r, eval=FALSE}
+neurons<-50 
+df1<-dplyr::select(df,-Rating)
+trainers<-df1[trainset,]
+testers<-df1[-trainset,]
+set.seed(seed) 
+#nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+guess<-predict(nn, testers, type = "class")
+quality<-qualify(testers$Recommendation,guess)
+# Record for later comparison
+nnets<-c(Neurons=neurons,Rating="Yes",Quality=quality)
+nnets
+nnets.all<-rbind(nnets.all,nnets)
+```
+
+Still doesn't work. What's wrong? It seems to have worked before. Continue....
+
+## Using neuralnet() library
+
+R's neuralnet() requires numeric input, so let's convert it.
+
+```{r}
+
+# convert every column to character to prevent loss of the data when gathering
+# square brackets keep data.frame type
+data[]<-lapply(data,as.character)
+
+# finally, repack factors to numeric columns
+bins<-data %>% # piped functions follow
+    
+  # make it narrow, don't touch numeric variables and IDs
+  gather(catnames,catvalues,-Dress_ID,-Rating,-Recommendation,-rnumber) %>%
+  
+  # make single column out of them
+  unite(newfactor,catnames,catvalues,sep=".") %>%
+
+  # add a new column - it's "1" for every record
+  mutate( is = 1) %>%
+
+  # create a column from each factor, and where there's no record, add "0"
+  spread(newfactor, is, fill = 0)
+
+# Now let's make it back numeric, except for ID
+bins[]<-lapply(bins,as.numeric)
+bins$Dress_ID<-as.factor(bins$Dress_ID)
+```
+Now we have 174 columns instead of 15, and they are all numeric, except for ID.
+
+To be continued...
+
