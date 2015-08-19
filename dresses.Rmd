@@ -61,7 +61,8 @@ library(xlsx) # for reading Excel files
 First, we change working directory and download the dataset.
 
 ```{r}
-#setwd("~/Documents/sales-neuralnet") # Knitr FAQ says it's a bad practice
+#setwd(file.path(normalizePath("~"),"sales-neuralnet")) # Knitr FAQ says
+# it's a bad practice, but use this line when running code in console
 file="Dresses_Attribute_Sales.rar"
 src=paste0("http://archive.ics.uci.edu/ml/machine-learning-databases/00289/",
            file)
@@ -292,7 +293,7 @@ I've commented out
 What if we drop the rating?
 
 ```{r, eval=FALSE}
-neurons<-50 
+neurons<-30 
 df1<-dplyr::select(df,-Rating)
 trainers<-df1[trainset,]
 testers<-df1[-trainset,]
@@ -306,7 +307,31 @@ nnets
 nnets.all<-rbind(nnets.all,nnets)
 ```
 
-Still doesn't work. What's wrong? It seems to have worked before. Continue....
+Still doesn't work. What's wrong? It seems to have worked before. Let's try
+to increase gradually.
+
+```{r}
+neurons<-6
+df1<-df
+trainers<-df1[trainset,]
+testers<-df1[-trainset,]
+set.seed(seed) 
+nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+guess<-predict(nn, testers, type = "class")
+quality<-qualify(testers$Recommendation,guess)
+# Record for later comparison
+nnets<-c(Neurons=neurons,Rating="Yes",Quality=quality)
+nnets
+nnets.all<-rbind(nnets.all,nnets)
+```
+
+OK, it's better.
+```{r, warning=FALSE}
+print(data.frame(nnets.all), row.names = FALSE)
+```
+
+OK, let's try to use neuralnet() library now, hoping that it will allow for
+more complex networks.
 
 ## Using neuralnet() library
 
@@ -348,6 +373,8 @@ To be continued...
 for spelling differences, unify
 - Find out why R-downloaded file is broken
 - Apply neuralnet()
+- Describe how in neural network for product sales data each neuron can be
+explained as a customer priorities pattern
 - Check if there's faster way to calculate prediction quality as a single number
 - Use actual sales numbers instead of "Recommendation" factor
 - For duplicated Dress_IDs, see if low/Low spelling should be fixed
@@ -368,3 +395,11 @@ model.matrix(~ . + 0,
              contrasts.arg = lapply(data, contrasts, contrasts=FALSE))
 ```
 
+```{r}
+## To do - technical
+# - Make nnet call a function - takes seed, neurons, rating usage, returns list
+# - Automate install.packages (and discuss reproducibility at forums)
+# - Also discuss republishing to the same RPubs document from a different copy
+# - Check if nnet() has successfully trained before checking it results
+# - Find out why make.row.names isn't recognized by rbind properly
+```
