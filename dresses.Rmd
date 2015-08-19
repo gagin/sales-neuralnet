@@ -5,7 +5,7 @@ date: "Tuesday, August 18, 2015"
 output: html_document
 ---
 
-This version may not be the latest, see if [Github
+RPubs note: This version may not be the latest, see if [Github
 copy](http://htmlpreview.github.io/?https://github.com/gagin/sales-neuralnet/blob/master/dresses.html)
 is more recent. [The code](https://github.com/gagin/sales-neuralnet/)
 is there too.
