@@ -67,6 +67,7 @@ img {
 </div>
 
 
+<p>This version may not be the latest, see if <a href="http://htmlpreview.github.io/?https://github.com/gagin/sales-neuralnet/blob/master/dresses.html">Github copy</a> is more recent. <a href="https://github.com/gagin/sales-neuralnet/">The code</a> is there too.</p>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <p>To demonstrate how previous sales data can be used to predict future sales, we’ll apply neural network library in R language to a dataset from UCI machine learning depository - <a href="http://archive.ics.uci.edu/ml/datasets/Dresses_Attribute_Sales">Dresses_Attribute_Sales Data Set</a></p>
@@ -104,12 +105,12 @@ library(neuralnet) # this one allows several layers, but work only with numbers
 # http://javadl.sun.com/webapps/download/AutoDL?BundleId=109708
 library(xlsx) # for reading Excel files</code></pre>
 <p>First, we change working directory and download the dataset.</p>
-<pre class="r"><code>setwd(&quot;/Users/User/Documents/sales-neuralnet&quot;)
+<pre class="r"><code>#setwd(&quot;~/Documents/sales-neuralnet&quot;) # Knitr FAQ says it's a bad practice
 file=&quot;Dresses_Attribute_Sales.rar&quot;
 src=paste0(&quot;http://archive.ics.uci.edu/ml/machine-learning-databases/00289/&quot;,
            file)
 if(!file.exists(file)) download.file(src,file)</code></pre>
-<p><strong>Now you have to unrar Dresses_Attribute_Sales.rar to the current folder! - it’s a manual step, not reproducible by the script</strong><br />As it seems there’s no easy way to unrar in R, so do this step outside of R.</p>
+<p><strong>Now you have to unrar Dresses_Attribute_Sales.rar to the current folder! - it’s a manual step, not reproducible by the script</strong><br />As it seems there’s no easy way to unrar in R, so do this step outside of R. Actually the R-downloaded file is broken somehow, so download it manually too.</p>
 <p>We see that there’s a file where for different properties of a dress there’s a recommendation result - does it sell or does it not. As authors explain, “This dataset contain Attributes of dresses and their recommendations according to their sales.” There’s also another spreadsheet where sales data is provided. For now we’ll use Recommendation parameter directly, sales numbers can be used later.</p>
 <pre class="r"><code># create platform-independent file path
 xls=file.path(&quot;Dresses_Attribute_Sales&quot;,&quot;Attribute DataSet.xlsx&quot;)
@@ -379,13 +380,17 @@ bins$Dress_ID&lt;-as.factor(bins$Dress_ID)</code></pre>
 <div id="to-do" class="section level2">
 <h2>To do</h2>
 <ul>
-<li>Apply neuralnet() :)</li>
+<li>See if low/Low spelling difference is something frequent, check other columns for spelling differences, unify</li>
+<li>Find out why R-downloaded file is broken</li>
+<li>Apply neuralnet()</li>
 <li>Check if there’s faster way to calculate prediction quality as a single number</li>
 <li>Use actual sales numbers instead of “Recommendation” factor</li>
+<li>For duplicated Dress_IDs, see if low/Low spelling should be fixed</li>
 <li>Try to predict ratings instead of sales</li>
 <li>See if “too many weights” can be solved for nnet (and how it worked before for me)</li>
 <li>See if predict() function is of nnet library or something more universal</li>
 <li>Try to apply compression algorithms to reveal attributes that affect price more than others (is it possible at all with factor-based data?)</li>
+<li>How price affect the sales, for example?</li>
 <li>Learn alternative ways to repack factors to numeric columns (something about model.matrix() and nnet’s class.ind()</li>
 </ul>
 <pre class="r"><code># Some code for future lookup

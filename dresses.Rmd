@@ -5,6 +5,11 @@ date: "Tuesday, August 18, 2015"
 output: html_document
 ---
 
+This version may not be the latest, see if [Github
+copy](http://htmlpreview.github.io/?https://github.com/gagin/sales-neuralnet/blob/master/dresses.html)
+is more recent. [The code](https://github.com/gagin/sales-neuralnet/)
+is there too.
+
 ## Introduction
 
 To demonstrate how previous sales data can be used to predict future sales,
@@ -56,7 +61,7 @@ library(xlsx) # for reading Excel files
 First, we change working directory and download the dataset.
 
 ```{r}
-setwd("/Users/User/Documents/sales-neuralnet")
+#setwd("~/Documents/sales-neuralnet") # Knitr FAQ says it's a bad practice
 file="Dresses_Attribute_Sales.rar"
 src=paste0("http://archive.ics.uci.edu/ml/machine-learning-databases/00289/",
            file)
@@ -66,6 +71,7 @@ if(!file.exists(file)) download.file(src,file)
 **Now you have to unrar Dresses_Attribute_Sales.rar to the current folder! - 
 it's a manual step, not reproducible by the script**  
 As it seems there's no easy way to unrar in R, so do this step outside of R.
+Actually the R-downloaded file is broken somehow, so download it manually too.
 
 We see that there's a file where for different properties of a dress there's
 a recommendation result - does it sell or does it not. As authors explain,
@@ -338,7 +344,10 @@ To be continued...
 
 ## To do
 
-- Apply neuralnet() :)
+- See if low/Low spelling difference is something frequent, check other columns
+for spelling differences, unify
+- Find out why R-downloaded file is broken
+- Apply neuralnet()
 - Check if there's faster way to calculate prediction quality as a single number
 - Use actual sales numbers instead of "Recommendation" factor
 - For duplicated Dress_IDs, see if low/Low spelling should be fixed
