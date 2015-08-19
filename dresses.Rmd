@@ -1,5 +1,5 @@
 ---
-title: "Sales machine learning data"
+title: "Applying machine learning to sales prediction"
 author: "Alex Gaggin"
 date: "Tuesday, August 18, 2015"
 output: html_document
@@ -7,12 +7,20 @@ output: html_document
 
 ## Introduction
 
-To demonstrate how historical sales data can be used to predict future seasonal
-demand, we'll apply neural network library in R language to a dataset from
+To demonstrate how previous sales data can be used to predict future sales,
+we'll apply neural network library in R language to a dataset from
 UCI machine learning depository - [Dresses_Attribute_Sales Data 
 Set](http://archive.ics.uci.edu/ml/datasets/Dresses_Attribute_Sales)
 
-###Attribute Information:
+The idea is to potentially apply the same method to improve other areas
+of sales. Say, we can come up with a set of attributes that describe qualities
+of a product page in a eCommerce store. Then, if these qualities do affect
+sales, we should be able to predict possible results of the product page
+changes.
+
+I don't really expect this to work, but this is an interesting exercise anyway.
+
+###Attribute Information for the dataset:
 
 - Style: Bohemia,brief,casual,cute,fashion,flare,novelty,OL,party,sexy,vintage,work. 
 - Price:Low,Average,Medium,High,Very-High 
