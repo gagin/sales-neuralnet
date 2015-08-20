@@ -63,9 +63,8 @@ First, we change working directory and download the dataset.
 ```{r}
 #setwd(file.path(normalizePath("~"),"sales-neuralnet")) # Knitr FAQ says
 # it's a bad practice, but use this line when running code in console
-file="Dresses_Attribute_Sales.rar"
-src=paste0("http://archive.ics.uci.edu/ml/machine-learning-databases/00289/",
-           file)
+src<-"http://archive.ics.uci.edu/ml/machine-learning-databases/00289/Dresses_Attribute_Sales.rar"
+file <- basename(src)
 if(!file.exists(file)) download.file(src,file)
 ```
 
@@ -309,7 +308,7 @@ nnets.all<-rbind(nnets.all,nnets)
 
 So rating doesn't matter. Let's go nuts and kick it to 200.
 
-```{r}
+```{r, cache=TRUE}
 neurons<-200
 df1<-df
 trainers<-df1[trainset,]
@@ -330,7 +329,8 @@ So what do we have now?
 print(data.frame(nnets.all), row.names = FALSE)
 ```
 
-OK, let's try to use neuralnet() library now, hoping that it will allow for
+OK, it doesn't work. Some different approach is needed, obviously.
+let's try to use neuralnet() library now, hoping that it will allow for
 more complex networks.
 
 ## Using neuralnet() library
@@ -379,8 +379,6 @@ explained as a customer priorities pattern
 - Use actual sales numbers instead of "Recommendation" factor
 - For duplicated Dress_IDs, see if low/Low spelling should be fixed
 - Try to predict ratings instead of sales
-- See if "too many weights" can be solved for nnet (and how it worked before for
-me)
 - See if predict() function is of nnet library or something more universal
 - Try to apply compression algorithms to reveal attributes that affect price
 more than others (is it possible at all with factor-based data?)
@@ -402,4 +400,5 @@ model.matrix(~ . + 0,
 # - Also discuss republishing to the same RPubs document from a different copy
 # - Check if nnet() has successfully trained before checking it results
 # - Find out why make.row.names isn't recognized by rbind properly
+# - Make nnet() call a function and auto-calculate MaxNWts
 ```
