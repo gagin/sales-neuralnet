@@ -107,14 +107,13 @@ library(xlsx) # for reading Excel files</code></pre>
 <p>First, we change working directory and download the dataset.</p>
 <pre class="r"><code>#setwd(file.path(normalizePath(&quot;~&quot;),&quot;sales-neuralnet&quot;)) # Knitr FAQ says
 # it's a bad practice, but use this line when running code in console
-file=&quot;Dresses_Attribute_Sales.rar&quot;
-src=paste0(&quot;http://archive.ics.uci.edu/ml/machine-learning-databases/00289/&quot;,
-           file)
+src&lt;-&quot;http://archive.ics.uci.edu/ml/machine-learning-databases/00289/Dresses_Attribute_Sales.rar&quot;
+file &lt;- basename(src)
 if(!file.exists(file)) download.file(src,file)</code></pre>
 <p><strong>Now you have to unrar Dresses_Attribute_Sales.rar to the current folder! - it’s a manual step, not reproducible by the script</strong><br />As it seems there’s no easy way to unrar in R, so do this step outside of R. Actually the R-downloaded file is broken somehow, so download it manually too.</p>
 <p>We see that there’s a file where for different properties of a dress there’s a recommendation result - does it sell or does it not. As authors explain, “This dataset contain Attributes of dresses and their recommendations according to their sales.” There’s also another spreadsheet where sales data is provided. For now we’ll use Recommendation parameter directly, sales numbers can be used later.</p>
 <pre class="r"><code># create platform-independent file path
-xls=file.path(&quot;Dresses_Attribute_Sales&quot;,&quot;Attribute DataSet.xlsx&quot;)
+xls&lt;-file.path(&quot;Dresses_Attribute_Sales&quot;,&quot;Attribute DataSet.xlsx&quot;)
 
 # read data from excel file to a data frame
 data&lt;-read.xlsx(xls,1) # second argument is tab number</code></pre>
@@ -205,14 +204,13 @@ data$rnumber&lt;-1:nrow(data)</code></pre>
 <div id="predictions-using-nnet-library" class="section level2">
 <h2>Predictions using nnet() library</h2>
 <p>Nnet() is a standard R library, it’s even included in the basic distribution package and doesn’t need to be installed separately. It also great because it allows to analyze data with so called “factor” variables - categorical ones. For example, what material a dress is made from - cotton, silk, etc. Its drawback is that it only allows for a single hidden layer of neurons.</p>
-<pre class="r"><code>library(nnet)
-# Make sure data types are good for nnet() - factors and numbers
+<pre class="r"><code># Make sure data types are good for nnet() - factors and numbers
 df&lt;-as.data.frame(
   lapply(
     dplyr::select(data,-Dress_ID,-rnumber),
     as.factor))
 df$Rating&lt;-as.numeric(df$Rating)
-# select() above needed direct reference to dplyr library because libraries
+# select() above needed direct reference to dplyr library because R libraries
 # like to overwrite this function very much</code></pre>
 <p>It’s time to train the neural network. This code creates an object which basically includes a set of coefficients to be applied to input parameters to predict (calculate) the outcome. This set of coefficients is the substance of the trained neural network.</p>
 <p>It takes some time to train a neural network, but once it’s trained, predictions can be calculated very fast and “cheap”. In this case the dataset is small, and network is simple, so it trains also fast.</p>
@@ -409,15 +407,59 @@ nnets</code></pre>
 <pre><code>## Neurons  Rating Quality 
 ##   &quot;200&quot;   &quot;Yes&quot;   &quot;57%&quot;</code></pre>
 <pre class="r"><code>nnets.all&lt;-rbind(nnets.all,nnets)</code></pre>
-<p>So what do we have now?</p>
+<p>No luck.</p>
+<p>Is there a rule of thumb for the number of neurons? Here’s a detailed answer to this question <a href="http://stackoverflow.com/questions/3345079/estimating-the-number-of-neurons-and-number-of-layers-of-an-artificial-neural-ne">by Nate Kohl at StackOverflow</a>. In short, while every problem should be handled specifically, and trial-and-error always useful, but the rule of thumb is 2/3 of number of inputs plus number of outputs. Question is - if we are dealing with the factor variables, do we count variables or their levels? That’s a question for another day, but for now we’ve seen that crude pumping neurons number doesn’t help that much.</p>
+<p>How many levels do we have in total, anyway?</p>
+<pre class="r"><code># Count number of unique values in each column, then sum it up
+# Let's also use R's trick - while we assign a value to a variable, parenthesis
+# do also print the value
+(levels.number&lt;-sum(
+        sapply(
+                dplyr::select(df,-Rating,-Recommendation),
+                function(x)
+                        length(unique(x)))))</code></pre>
+<pre><code>## [1] 170</code></pre>
+<pre class="r"><code># Then 2/3 will be, adding input Rating and output Recommendation
+(neurons&lt;-round((levels.number+2)*2/3))</code></pre>
+<pre><code>## [1] 115</code></pre>
+<p>Just to be safe, let’s do 115 neurons.</p>
+<pre class="r"><code>df1&lt;-df
+trainers&lt;-df1[trainset,]
+testers&lt;-df1[-trainset,]
+set.seed(seed) 
+nn&lt;-nnet(Recommendation ~ ., trainers, size=neurons,MaxNWts=100000)</code></pre>
+<pre><code>## # weights:  17711
+## initial  value 814.369720 
+## iter  10 value 233.274460
+## iter  20 value 192.190614
+## iter  30 value 137.987112
+## iter  40 value 71.908269
+## iter  50 value 15.057290
+## iter  60 value 1.789717
+## iter  70 value 0.077771
+## iter  80 value 0.003328
+## iter  90 value 0.000466
+## iter 100 value 0.000186
+## final  value 0.000186 
+## stopped after 100 iterations</code></pre>
+<pre class="r"><code>guess&lt;-predict(nn, testers, type = &quot;class&quot;)
+quality&lt;-qualify(testers$Recommendation,guess)
+# Record for later comparison
+nnets&lt;-c(Neurons=neurons,Rating=&quot;Yes&quot;,Quality=quality)
+nnets</code></pre>
+<pre><code>## Neurons  Rating Quality 
+##   &quot;115&quot;   &quot;Yes&quot;   &quot;51%&quot;</code></pre>
+<pre class="r"><code>nnets.all&lt;-rbind(nnets.all,nnets)</code></pre>
+<p>Let’s review our attempts.</p>
 <pre class="r"><code>print(data.frame(nnets.all), row.names = FALSE)</code></pre>
 <pre><code>##  Neurons Rating Quality
 ##        5    Yes     60%
 ##        5     No     61%
 ##       30    Yes     57%
 ##       30    Yes     47%
-##      200    Yes     57%</code></pre>
-<p>OK, let’s try to use neuralnet() library now, hoping that it will allow for more complex networks.</p>
+##      200    Yes     57%
+##      115    Yes     51%</code></pre>
+<p>So, it doesn’t work. Some different approach is needed, obviously. Perhaps there should be more layers, not just more neurons? Let’s try to use neuralnet() library now, hoping that it will allow for more complex networks.</p>
 </div>
 <div id="using-neuralnet-library" class="section level2">
 <h2>Using neuralnet() library</h2>
@@ -451,6 +493,7 @@ bins$Dress_ID&lt;-as.factor(bins$Dress_ID)</code></pre>
 <div id="to-do" class="section level2">
 <h2>To do</h2>
 <ul>
+<li>Check for NAs and handle them</li>
 <li>See if low/Low spelling difference is something frequent, check other columns for spelling differences, unify</li>
 <li>Find out why R-downloaded file is broken</li>
 <li>Apply neuralnet()</li>
@@ -463,6 +506,7 @@ bins$Dress_ID&lt;-as.factor(bins$Dress_ID)</code></pre>
 <li>Try to apply compression algorithms to reveal attributes that affect price more than others (is it possible at all with factor-based data?)</li>
 <li>How price affect the sales, for example?</li>
 <li>Learn alternative ways to repack factors to numeric columns (something about model.matrix() and nnet’s class.ind()</li>
+<li>When deciding number of neurons with a 2/3 inputs+outputs rule, do we count factor variables or all they levels?</li>
 </ul>
 <pre class="r"><code># Some code for future lookup
 model.matrix(~ . + 0, 
@@ -473,7 +517,8 @@ model.matrix(~ . + 0,
 # - Automate install.packages (and discuss reproducibility at forums)
 # - Also discuss republishing to the same RPubs document from a different copy
 # - Check if nnet() has successfully trained before checking it results
-# - Find out why make.row.names isn't recognized by rbind properly</code></pre>
+# - Find out why make.row.names isn't recognized by rbind properly
+# - Envelope nnet() into a function and auto-calculate MaxNWts there too</code></pre>
 </div>
 
 

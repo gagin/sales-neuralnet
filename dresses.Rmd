@@ -82,7 +82,7 @@ used later.
 
 ```{r, cache=TRUE}
 # create platform-independent file path
-xls=file.path("Dresses_Attribute_Sales","Attribute DataSet.xlsx")
+xls<-file.path("Dresses_Attribute_Sales","Attribute DataSet.xlsx")
 
 # read data from excel file to a data frame
 data<-read.xlsx(xls,1) # second argument is tab number
@@ -161,14 +161,13 @@ ones. For example, what material a dress is made from - cotton, silk, etc.
 Its drawback is that it only allows for a single hidden layer of neurons.
 
 ```{r}
-library(nnet)
 # Make sure data types are good for nnet() - factors and numbers
 df<-as.data.frame(
   lapply(
     dplyr::select(data,-Dress_ID,-rnumber),
     as.factor))
 df$Rating<-as.numeric(df$Rating)
-# select() above needed direct reference to dplyr library because libraries
+# select() above needed direct reference to dplyr library because R libraries
 # like to overwrite this function very much
 ```
 
@@ -323,15 +322,59 @@ nnets
 nnets.all<-rbind(nnets.all,nnets)
 ```
 
-So what do we have now?
+No luck.
+
+Is there a rule of thumb for the number of neurons? Here's a detailed answer
+to this question [by Nate Kohl at 
+StackOverflow](http://stackoverflow.com/questions/3345079/estimating-the-number-of-neurons-and-number-of-layers-of-an-artificial-neural-ne).
+In short, while every problem
+should be handled specifically, and trial-and-error always useful, but the rule
+of thumb is 2/3 of number of inputs plus number of outputs. Question is - if we
+are dealing with the factor variables, do we count variables or their levels?
+That's a question for another day, but for now we've seen that crude pumping
+neurons number doesn't help that much.
+
+How many levels do we have in total, anyway?
+
+```{r}
+# Count number of unique values in each column, then sum it up
+# Let's also use R's trick - while we assign a value to a variable, parenthesis
+# do also print the value
+(levels.number<-sum(
+        sapply(
+                dplyr::select(df,-Rating,-Recommendation),
+                function(x)
+                        length(unique(x)))))
+
+# Then 2/3 will be, adding input Rating and output Recommendation
+(neurons<-round((levels.number+2)*2/3))
+```
+
+Just to be safe, let's do `r neurons` neurons.
+
+```{r, cache=TRUE}
+df1<-df
+trainers<-df1[trainset,]
+testers<-df1[-trainset,]
+set.seed(seed) 
+nn<-nnet(Recommendation ~ ., trainers, size=neurons,MaxNWts=100000)
+guess<-predict(nn, testers, type = "class")
+quality<-qualify(testers$Recommendation,guess)
+# Record for later comparison
+nnets<-c(Neurons=neurons,Rating="Yes",Quality=quality)
+nnets
+nnets.all<-rbind(nnets.all,nnets)
+```
+
+Let's review our attempts.
 
 ```{r, warning=FALSE}
 print(data.frame(nnets.all), row.names = FALSE)
 ```
 
-OK, it doesn't work. Some different approach is needed, obviously.
-let's try to use neuralnet() library now, hoping that it will allow for
-more complex networks.
+So, it doesn't work. Some different approach is needed, obviously. Perhaps there
+should be more layers, not just more neurons?  Let's try to use neuralnet()
+library now, hoping that it will allow for more complex networks.
 
 ## Using neuralnet() library
 
@@ -369,9 +412,11 @@ To be continued...
 
 ## To do
 
+- Check for NAs and handle them
 - See if low/Low spelling difference is something frequent, check other columns
 for spelling differences, unify
 - Find out why R-downloaded file is broken
+- Time neural net training times for demonstration purpose (for my PC's power)
 - Apply neuralnet()
 - Describe how in neural network for product sales data each neuron can be
 explained as a customer priorities pattern
@@ -385,6 +430,8 @@ more than others (is it possible at all with factor-based data?)
 - How price affect the sales, for example?
 - Learn alternative ways to repack factors to numeric columns (something about
 model.matrix() and nnet's class.ind()
+- When deciding number of neurons with a 2/3 inputs+outputs rule, do we count
+factor variables or all they levels?
 
 ```{r, eval=FALSE}
 # Some code for future lookup
@@ -400,5 +447,5 @@ model.matrix(~ . + 0,
 # - Also discuss republishing to the same RPubs document from a different copy
 # - Check if nnet() has successfully trained before checking it results
 # - Find out why make.row.names isn't recognized by rbind properly
-# - Make nnet() call a function and auto-calculate MaxNWts
+# - Envelope nnet() into a function and auto-calculate MaxNWts there too
 ```
