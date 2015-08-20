@@ -183,7 +183,7 @@ some time to train a neural network, but once it's trained, predictions can be
 calculated very fast and "cheap". In this case the dataset is small, and
 network is simple, so it trains also fast.
 
-```{r}
+```{r, cache=TRUE}
 neurons<-5 # we'll play with this number below
 df1<-df # make clean copy which can be mutilated if needed - will be used later
 seed<-3 # initialize randomizer for reproducibility
@@ -226,7 +226,7 @@ trainset<-sample.int(nr,round(share*nr))
 The trainset variable now has numbers of observations we'll use for training.
 Let's split the dataset in two.
 
-```{r}
+```{r, cache=TRUE}
 neurons<-5 
 df1<-df
 trainers<-df1[trainset,]
@@ -237,7 +237,7 @@ nn<-nnet(Recommendation ~ ., trainers, size=neurons)
 
 Now let's see what happens to our prediction quality.
 
-```{r}
+```{r, cache=TRUE}
 guess<-predict(nn, testers, type = "class")
 quality<-qualify(testers$Recommendation,guess)
 # Record for later comparison
@@ -252,7 +252,7 @@ Moreover, it included Rating, which is kind of cheating. Theoretically speaking,
 there's a confounding variable - people both rate and buy what they like. Let's
 drop the rating.
 
-```{r}
+```{r, cache=TRUE}
 neurons<-5 
 df1<-dplyr::select(df,-Rating)
 trainers<-df1[trainset,]
@@ -273,13 +273,15 @@ as strong as we expected.
 
 Let's increase number of neurons. First, with Rating.
 
-```{r, eval=FALSE}
+```{r, cache=TRUE}
 neurons<-30 
 df1<-df
 trainers<-df1[trainset,]
 testers<-df1[-trainset,]
-set.seed(seed) 
-nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+set.seed(seed)
+# Add a new paramter to nnet() - MaxNWts, otherwise it exceeds default
+# value for maximum number of weights and errors w/ "too many (4621) weights"
+nn<-nnet(Recommendation ~ ., trainers, size=neurons, MaxNWts=10000)
 guess<-predict(nn, testers, type = "class")
 quality<-qualify(testers$Recommendation,guess)
 # Record for later comparison
@@ -288,17 +290,15 @@ nnets
 nnets.all<-rbind(nnets.all,nnets)
 ```
 
-Hmm... Nnet() couldn't handle it, says "too many (4621) weights".
-I've commented out
-What if we drop the rating?
+Now - without the rating.
 
-```{r, eval=FALSE}
+```{r, cache=TRUE}
 neurons<-30 
 df1<-dplyr::select(df,-Rating)
 trainers<-df1[trainset,]
 testers<-df1[-trainset,]
 set.seed(seed) 
-nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+nn<-nnet(Recommendation ~ ., trainers, size=neurons,MaxNWts=10000)
 guess<-predict(nn, testers, type = "class")
 quality<-qualify(testers$Recommendation,guess)
 # Record for later comparison
@@ -307,16 +307,15 @@ nnets
 nnets.all<-rbind(nnets.all,nnets)
 ```
 
-Still doesn't work. What's wrong? It seems to have worked before. Let's try
-to increase gradually.
+So rating doesn't matter. Let's go nuts and kick it to 200.
 
 ```{r}
-neurons<-6
+neurons<-200
 df1<-df
 trainers<-df1[trainset,]
 testers<-df1[-trainset,]
 set.seed(seed) 
-nn<-nnet(Recommendation ~ ., trainers, size=neurons)
+nn<-nnet(Recommendation ~ ., trainers, size=neurons,MaxNWts=100000)
 guess<-predict(nn, testers, type = "class")
 quality<-qualify(testers$Recommendation,guess)
 # Record for later comparison
@@ -325,7 +324,8 @@ nnets
 nnets.all<-rbind(nnets.all,nnets)
 ```
 
-OK, it's better.
+So what do we have now?
+
 ```{r, warning=FALSE}
 print(data.frame(nnets.all), row.names = FALSE)
 ```
