@@ -1,7 +1,9 @@
+```{r, echo=FALSE,results='hide'}
+# setwd(file.path(normalizePath("~"),"sales-neuralnet"))
+```
 ---
 title: "Applying machine learning to sales prediction"
 author: "Alex Gaggin"
-date: "Tuesday, August 18, 2015"
 output: html_document
 ---
 
@@ -25,7 +27,86 @@ changes.
 
 I don't really expect this to work, but this is an interesting exercise anyway.
 
+## Some observations on physical meaning of neural networks
+
+I have to digress to explain why I'm doing this. I'm studying for Data Science
+specialization on Coursera, because I realized that for my day job it would
+be really useful to have better understanding of these technologies. After
+couple of courses, however entertaining they were, I realized, that it's not
+quite what I expected. So I went and looked - where else this knowledge can be
+used?
+
+I found almost right away that machine learning is the closest application there
+is. And this area is booming - see [this
+video](https://www.youtube.com/watch?v=czLI3oLDe8M), for example.
+It looks like right now we are at a point where
+Moore law (lost by Intel, but maintained by Nvidia) allows to bridge performance
+gap from some decades-old machine learning theory to very practical
+applications. Every business will become IT business at its core, they say.
+And every IT business will become machine learning business at its core.
+Android's amazing speech recognition is machine learning, for example.
+
+So it is all very exciting.
+Question is - can a layperson like me use existing machine learning libraries
+without having good understanding of how math works inside? Is it
+available for some higher level usage similar to how WWW in early nineties
+allowed to use complex network and PC technologies by working at much higher
+HTML level and create some amazing results? This is an experiment to do that.
+Sure, R code can look scary. But you can consider most of the things I do in this
+file to be just some command-line replacement of Excel. Neural network magic is
+a black box, I use its very basic calls and at very primitive level, without
+good understanding.
+
+I mean, I have some understanding, but it's quite superficial. Like this.
+At a simplest level, artificial neurons are sets of weights for each input. If
+input is a picture (list of pixel values), then this set of weights would
+be same resolution as original input, and can even be rendered - it will show
+then a pattern to which this neuron is sensitive to. It's hard for me to
+imagine what would happen with multi-layered network. They say that for animal
+image recognition networks the first
+layer collects graphic primitives like edges, next layer - higher level
+graphic objects, then at some point eyes and noses, then cats and dogs, then
+breeds and so on. But I don't understand yet if it's something that happens
+automatically. I only can imagine how the first level is rendered as a pattern
+a neuron recognizes, which happens in this amazing example where [74 lines
+of python
+code](http://neuralnetworksanddeeplearning.com/chap1.html), while not containing
+any calls to neural net libraries, do character recognition better than humans
+do.
+
+Now, getting back to this dress sales dataset. While working with it,
+I got a realization - there's a simple intuitive explanation for neural network
+logic when it decides if a dress will sell or not.
+Each input (see section on neuralnet() usage) is a style
+attribute of a dress. Does it have long sleeves? Is it black? Is it sexy? And
+170 or so similar questions are answered in the inputs for each dress. Then each
+neuron finds a weight for each input. This means that each neuron is actually
+a customer
+preference pattern. One neuron will have higher preference for red sexy
+dresses with long sleeves, smaller preference for brief silk dresses, and
+tolerance for cashmere. Another - different set of weights meaning imitation
+of a customer with a different taste - different set of preferences. So
+neurons are like people with different tastes.
+
+When neural net is taught about dresses and if they will sell or not, it will
+iterate group of most typical and most sales-influential customer tastes.
+
+I can imagine that if there will be two layers, then deeper layer will
+aggregate these tastes somehow, and so at the second levels neurons will
+represent some taste groups - for example, different ages, different cultural
+groups, different regions. This is a theory, I have no idea how close it is
+to the reality, but perhaps this is what I will be able to do, as I continue
+with this research. It seems intriguing to deconstruct a taught neural network
+to see what patterns it has extracted and what are their meanings.
+
+It is highly probable, of course, that a) I misunderstand and imagining things
+b) this all had been asked and answered long time ago c) there are simple
+answers I ignore just because of my ignorance. Well, the path is everything,
+the destination is nothing. Let's do it.
+
 ###Attribute Information for the dataset:
+
+These are the attributes the dataset in question contains:
 
 - Style: Bohemia,brief,casual,cute,fashion,flare,novelty,OL,party,sexy,vintage,work. 
 - Price:Low,Average,Medium,High,Very-High 
@@ -49,10 +130,12 @@ in R, so various data processing steps are explained where possible.
 ```{r, results='hide', warning=FALSE, message=FALSE}
 # Let's load libraries first
 # Use call like install.packages("dplyr"), if you miss any of the libraries.
+library(digest) # get checksum for data loaded from file
 library(dplyr) # for column selection and handy function piping syntax
 library(tidyr) # for making numeric columns from style variables
 library(nnet) # this neural net library allows for one layer of hidden neurons
 library(neuralnet) # this one allows several layers, but work only with numbers
+library(data.table) # for renaming columns list to list
 # Update Java to 64bit version if xlsx library returns Java error
 # http://javadl.sun.com/webapps/download/AutoDL?BundleId=109708
 library(xlsx) # for reading Excel files
@@ -85,7 +168,10 @@ used later.
 xls<-file.path("Dresses_Attribute_Sales","Attribute DataSet.xlsx")
 
 # read data from excel file to a data frame
-data<-read.xlsx(xls,1) # second argument is tab number
+if(!exists("loaded") || digest(loaded) != "c049d992c0c433cb3b0d1cbc7e348f6c")
+        loaded<-read.xlsx(xls,1) # second argument is tab number
+# preserve to skip file loading on console re-runs
+data<-loaded
 ```
 
 ## Data review
@@ -181,6 +267,7 @@ some time to train a neural network, but once it's trained, predictions can be
 calculated very fast and "cheap". In this case the dataset is small, and
 network is simple, so it trains also fast.
 
+
 ```{r, cache=TRUE}
 neurons<-5 # we'll play with this number below
 df1<-df # make clean copy which can be mutilated if needed - will be used later
@@ -191,6 +278,21 @@ nn<-nnet(Recommendation ~ ., df1, size=neurons)
 guess<-predict(nn, df1, type = "class")
 table(df1$Recommendation,guess)
 ```
+
+Let's make nnet() a placeholder function with this result to skip these runs
+when developing next parts. This code itself should be skipped when producing 
+the final document.
+
+```{r, warning=FALSE}
+# To skip empty runs while developing, overwrite it
+nn.placeholder<-nn
+if(exists("nnet")) rm(nnet)
+nnet<-function(a,b,size=1) {
+        print("Console run: skipped following nnet calls")
+        nn.placeholder
+        }
+```
+
 
 Well, most zeroes are classified as zeroes and vice versa. Let's calculate
 a percentage of the correct guesses.
@@ -305,24 +407,7 @@ nnets
 nnets.all<-rbind(nnets.all,nnets)
 ```
 
-So rating doesn't matter. Let's go nuts and kick it to 200.
-
-```{r, cache=TRUE}
-neurons<-200
-df1<-df
-trainers<-df1[trainset,]
-testers<-df1[-trainset,]
-set.seed(seed) 
-nn<-nnet(Recommendation ~ ., trainers, size=neurons,MaxNWts=100000)
-guess<-predict(nn, testers, type = "class")
-quality<-qualify(testers$Recommendation,guess)
-# Record for later comparison
-nnets<-c(Neurons=neurons,Rating="Yes",Quality=quality)
-nnets
-nnets.all<-rbind(nnets.all,nnets)
-```
-
-No luck.
+So rating doesn't matter here.
 
 Is there a rule of thumb for the number of neurons? Here's a detailed answer
 to this question [by Nate Kohl at 
@@ -376,7 +461,7 @@ So, it doesn't work. Some different approach is needed, obviously. Perhaps there
 should be more layers, not just more neurons?  Let's try to use neuralnet()
 library now, hoping that it will allow for more complex networks.
 
-## Using neuralnet() library
+## Predictions using neuralnet() library
 
 R's neuralnet() requires numeric input, so let's convert it.
 
@@ -408,7 +493,161 @@ bins$Dress_ID<-as.factor(bins$Dress_ID)
 ```
 Now we have 174 columns instead of 15, and they are all numeric, except for ID.
 
-To be continued...
+Try full dataset first, just to get a feeling.
+
+```{r}
+# replace minuses in column names to avoid breaking formula in neuralnet call
+cnames<-colnames(bins)
+bad.cnames<-cnames[grepl("-",cnames,fixed=TRUE)]
+## Presumably there's no columns with the same names except for minus sign
+#fixed.cnames<-sapply(bad.cnames,function(x){gsub("-","",x,fixed=TRUE)})
+#cnames[cnames %in% fixed.cnames]
+## I was wrong! It duplicates this way. Let's add something instead of minus.
+##And keep this exercise in here just to remember what fun it was
+fixed.cnames<-sapply(bad.cnames,function(x){gsub("-",".",x,fixed=TRUE)})
+cnames[cnames %in% fixed.cnames]
+# setnames() call from data.table works by reference, so no copying
+setnames(bins,old=bad.cnames,new=fixed.cnames)
+```
+
+```{r, cache=TRUE}
+# next line was used to generate list of columns below
+# cat(paste0(names(bins)[5:174],sep="+"))
+# also make function to avoid copy-pasting it again
+bins.nn<-function(df,rep=1,hidden=c(1),threshold=0.1) {
+        set.seed(seed)
+        nn.obj<-neuralnet(Recommendation ~ Decoration.applique+ Decoration.beading+ Decoration.bow+ Decoration.button+ Decoration.cascading+ Decoration.crystal+ Decoration.draped+ Decoration.embroidary+ Decoration.feathers+ Decoration.flowers+ Decoration.hollowout+ Decoration.lace+ Decoration.NA+ Decoration.none+ Decoration.null+ Decoration.pearls+ Decoration.plain+ Decoration.pleat+ Decoration.pockets+ Decoration.rivet+ Decoration.ruched+ Decoration.ruffles+ Decoration.sashes+ Decoration.sequined+ Decoration.tassel+ Decoration.Tiered+ FabricType.batik+ FabricType.broadcloth+ FabricType.chiffon+ FabricType.Corduroy+ FabricType.dobby+ FabricType.flannael+ FabricType.flannel+ FabricType.jersey+ FabricType.knitted+ FabricType.knitting+ FabricType.lace+ FabricType.NA+ FabricType.null+ FabricType.organza+ FabricType.other+ FabricType.poplin+ FabricType.satin+ FabricType.sattin+ FabricType.shiffon+ FabricType.terry+ FabricType.tulle+ FabricType.wollen+ FabricType.woolen+ FabricType.worsted+ Material.acrylic+ Material.cashmere+ Material.chiffonfabric+ Material.cotton+ Material.knitting+ Material.lace+ Material.linen+ Material.lycra+ Material.microfiber+ Material.milksilk+ Material.mix+ Material.modal+ Material.model+ Material.NA+ Material.null+ Material.nylon+ Material.other+ Material.polyster+ Material.rayon+ Material.shiffon+ Material.silk+ Material.sill+ Material.spandex+ Material.viscos+ Material.wool+ NeckLine.backless+ NeckLine.boat.neck+ NeckLine.bowneck+ NeckLine.halter+ NeckLine.mandarin.collor+ NeckLine.NA+ NeckLine.NULL+ NeckLine.o.neck+ NeckLine.open+ NeckLine.peterpan.collor+ NeckLine.ruffled+ NeckLine.Scoop+ NeckLine.slash.neck+ NeckLine.sqare.collor+ NeckLine.sweetheart+ NeckLine.Sweetheart+ NeckLine.turndowncollor+ NeckLine.v.neck+ Pattern.Type.animal+ Pattern.Type.character+ Pattern.Type.dot+ Pattern.Type.floral+ Pattern.Type.geometric+ Pattern.Type.leapord+ Pattern.Type.leopard+ Pattern.Type.NA+ Pattern.Type.none+ Pattern.Type.null+ Pattern.Type.patchwork+ Pattern.Type.plaid+ Pattern.Type.print+ Pattern.Type.solid+ Pattern.Type.splice+ Pattern.Type.striped+ Price.Average+ Price.high+ Price.High+ Price.low+ Price.Low+ Price.Medium+ Price.NA+ Price.very.high+ Season.Automn+ Season.Autumn+ Season.NA+ Season.spring+ Season.Spring+ Season.summer+ Season.Summer+ Season.winter+ Season.Winter+ Size.free+ Size.L+ Size.M+ Size.s+ Size.S+ Size.small+ Size.XL+ SleeveLength.butterfly+ SleeveLength.cap.sleeves+ SleeveLength.capsleeves+ SleeveLength.full+ SleeveLength.half+ SleeveLength.halfsleeve+ SleeveLength.NULL+ SleeveLength.Petal+ SleeveLength.short+ SleeveLength.sleeevless+ SleeveLength.sleeveless+ SleeveLength.sleevless+ SleeveLength.sleveless+ SleeveLength.threequarter+ SleeveLength.threequater+ SleeveLength.thressqatar+ SleeveLength.turndowncollor+ SleeveLength.urndowncollor+ Style.bohemian+ Style.Brief+ Style.Casual+ Style.cute+ Style.fashion+ Style.Flare+ Style.Novelty+ Style.OL+ Style.party+ Style.sexy+ Style.Sexy+ Style.vintage+ Style.work+ waiseline.dropped+ waiseline.empire+ waiseline.NA+ waiseline.natural+ waiseline.null+ waiseline.princess,
+                          data=bins,
+                          hidden=hidden,
+                          lifesign="full",
+                          lifesign.step=2000,
+                          threshold=threshold,
+                          rep=rep)
+        return(nn.obj)}
+n1<-bins.nn(bins,rep=1,hidden=c(5),threshold=0.02)
+res1<-neuralnet::compute(n1,bins[,5:174])
+## Some fun how I couldn't get it working
+## First I got this
+### Error in eval(expr, envir, enclos) : object 'NeckLine.boatneck' not found
+## Looked like  minus sign in column names were treated as part of the formula
+## So I made code above to delete minuses from column names
+## Then I was getting following:
+### Error in neurons[[i]] %*% weights[[i]] : non-conformable arguments
+## Checking dimensions
+#length(n1$model.list$variables)
+#length(bins[1,5:174])
+## Do not match, why?
+#bins[1,5:174][! names(bins[1,5:174]) %in% n1$model.list$variables]
+## SleeveLength.capsleeves.1
+## It duplicates!
+## I went up to see if fixed.cnames were present in cnames, and they were
+## So I replaced minusis with dot
+qualify(round(res1$net.result),bins$Recommendation)
+```
+
+So it works fine for the full set. Let's do testers/trainers again.
+
+```{r}
+# do we have same number of lines?
+dim(bins)
+dim(df)
+# We do
+trainers<-bins[trainset,]
+testers<-bins[-trainset,]
+## I had another interesting hurdle here. To skip wait times on teaching the
+## network, I had cache=TRUE instruction on the previous block. Guess what -
+## it skipped that code block and didn't replace minuses in column names.
+## And so I got errors. Thus I should be careful with using cache when
+## code does some essential transformations. So I've split that chunk to two
+## and cached only the neuralnet training part.
+n5<-bins.nn(trainers,rep=1,hidden=c(5),threshold=0.02)
+res5<-neuralnet::compute(n5,testers[,5:174])
+qualify(round(res5$net.result),testers$Recommendation)
+
+```
+
+100% with just 5 artificial neurons? Suspicious! What about just 1?
+
+```{r}
+n2<-bins.nn(trainers,rep=1,hidden=c(1),threshold=0.02)
+res2<-neuralnet::compute(n2,testers[,5:174])
+qualify(round(res2$net.result),testers$Recommendation)
+```
+90%
+Well... Perhaps rating matters after all? Let's kill it in the test set and see.
+
+```{r}
+testers$Rating<-0
+res5<-neuralnet::compute(n5,testers[,5:174])
+qualify(round(res5$net.result),testers$Recommendation)
+```
+
+Still 100% with 5 neurons, even without the rating.
+Perhaps it's price? Let's withdraw markers of average price from inputs.
+
+```{r}
+testers$Price.Average<-0
+res5<-neuralnet::compute(n5,testers[,5:174])
+qualify(round(res5$net.result),testers$Recommendation)
+```
+
+100%
+I've seen lower values with a different seed (neural net is initialized
+with starting random weights, and so there's some luck, which can be
+increased in a matter of speaking by bumping rep argument - i.e. number
+of times the teaching process is re-run), but continue... Let's hide low
+price markers.
+
+```{r}
+testers$Price.Low<-0
+res5<-neuralnet::compute(n5,testers[,5:174])
+qualify(round(res5$net.result),testers$Recommendation)
+```
+
+92% make some sense - supposedly low price would indeed result in better sales.
+Finally, let's remove high price markers.
+
+```{r}
+testers$Price.High<-0
+res5<-neuralnet::compute(n5,testers[,5:174])
+qualify(round(res5$net.result),testers$Recommendation)
+```
+
+OK, so even if I withhold rating and price information, I still get
+91% prediction
+quality. Well, at least it declines when I remove input information. It makes
+it a little less suspicious.
+
+I can actually look at weights to see what attributes are the most
+important ones. We'll use single-neuron model for that.
+```{r}
+# Weights count from 1 to 171. Add 3 for last one to be 174th.
+cnames[which.max(n2$weights[[1]][[1]])+3]
+```
+So, unless I botched up column counts, sleeveless dresses are the most sellable
+ones. Cool.
+```{r}
+cnames[which.min(n2$weights[[1]][[1]])+3]
+```
+These weights variate based on a seed. Pearl decorations aren't cool, I guess.
+But when I ran this in console (where the net was from a training with
+a random seed), I got sweetheart neckline. Is it still in top of worst features
+here?
+
+```{r}
+# There should be a better way to get a list of top three min, but for now,
+# let's do it in a crude way.
+w<-n2$weights[[1]][[1]]
+ww<-function()print(cnames[which.min(w)+3])
+ww();w[which.min(w)]=max(w)
+ww();w[which.min(w)]=max(w)
+ww()
+```
+No, the list is different. In my console, I got for sweetheart necklined small
+acrylic dresses as the worst. No intersection. Something to think about.
+
+BTW, I should try clustering, running principal component
+analysis algorithm and so on. But that's to be continued...
 
 ## To do
 
@@ -417,9 +656,11 @@ To be continued...
 for spelling differences, unify
 - Find out why R-downloaded file is broken
 - Time neural net training times for demonstration purpose (for my PC's power)
-- Apply neuralnet()
-- Describe how in neural network for product sales data each neuron can be
-explained as a customer priorities pattern
+- <del>Apply neuralnet()</del>
+- Should I somehow take in account that inputs and outputs are integers, when
+using neuralnet(), instead of rounding the result?
+- <del>Describe how in neural network for product sales data each neuron can be
+explained as a customer priorities pattern</del>
 - Check if there's faster way to calculate prediction quality as a single number
 - Use actual sales numbers instead of "Recommendation" factor
 - For duplicated Dress_IDs, see if low/Low spelling should be fixed
