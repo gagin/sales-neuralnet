@@ -573,8 +573,11 @@ n2<-bins.nn(trainers,rep=1,hidden=c(1),threshold=0.02)
 res2<-neuralnet::compute(n2,testers[,5:174])
 qualify(round(res2$net.result),testers$Recommendation)
 ```
-90%
-Well... Perhaps rating matters after all? Let's kill it in the test set and see.
+90% for a single neuron? Interesting.
+
+OK, back to 5 neurons.  
+Let's check - perhaps rating matters after all?  
+Let's wipe it out of the test set and see.
 
 ```{r}
 testers$Rating<-0
@@ -582,7 +585,7 @@ res5<-neuralnet::compute(n5,testers[,5:174])
 qualify(round(res5$net.result),testers$Recommendation)
 ```
 
-Still 100% with 5 neurons, even without the rating.
+Still 100% with 5 neurons, even without the rating.  
 Perhaps it's price? Let's withdraw markers of average price from inputs.
 
 ```{r}
@@ -591,7 +594,7 @@ res5<-neuralnet::compute(n5,testers[,5:174])
 qualify(round(res5$net.result),testers$Recommendation)
 ```
 
-100%
+100%  
 I've seen lower values with a different seed (neural net is initialized
 with starting random weights, and so there's some luck, which can be
 increased in a matter of speaking by bumping rep argument - i.e. number
@@ -604,7 +607,8 @@ res5<-neuralnet::compute(n5,testers[,5:174])
 qualify(round(res5$net.result),testers$Recommendation)
 ```
 
-92% make some sense - supposedly low price would indeed result in better sales.
+92% make some sense - supposedly low price would indeed result in better
+sales.  
 Finally, let's remove high price markers.
 
 ```{r}
@@ -620,15 +624,19 @@ it a little less suspicious.
 
 I can actually look at weights to see what attributes are the most
 important ones. We'll use single-neuron model for that.
+
 ```{r}
 # Weights count from 1 to 171. Add 3 for last one to be 174th.
 cnames[which.max(n2$weights[[1]][[1]])+3]
 ```
+
 So, unless I botched up column counts, sleeveless dresses are the most sellable
 ones. Cool.
+
 ```{r}
 cnames[which.min(n2$weights[[1]][[1]])+3]
 ```
+
 These weights variate based on a seed. Pearl decorations aren't cool, I guess.
 But when I ran this in console (where the net was from a training with
 a random seed), I got sweetheart neckline. Is it still in top of worst features
@@ -643,6 +651,7 @@ ww();w[which.min(w)]=max(w)
 ww();w[which.min(w)]=max(w)
 ww()
 ```
+
 No, the list is different. In my console, I got for sweetheart necklined small
 acrylic dresses as the worst. No intersection. Something to think about.
 
@@ -655,7 +664,8 @@ analysis algorithm and so on. But that's to be continued...
 - See if low/Low spelling difference is something frequent, check other columns
 for spelling differences, unify
 - Find out why R-downloaded file is broken
-- Time neural net training times for demonstration purpose (for my PC's power)
+- <del>Time neural net training times for demonstration purpose
+(for my PC's power)</del> neuralnet() shows it automatically.
 - <del>Apply neuralnet()</del>
 - Should I somehow take in account that inputs and outputs are integers, when
 using neuralnet(), instead of rounding the result?

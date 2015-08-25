@@ -558,32 +558,33 @@ n5&lt;-bins.nn(trainers,rep=1,hidden=c(5),threshold=0.02)</code></pre>
 ##                                                    8000  min thresh: 0.02927448485
 ##                                                   10000  min thresh: 0.02625585969
 ##                                                   12000  min thresh: 0.02120308571
-##                                                   12110  error: 0.55624  time: 21.95 secs</code></pre>
+##                                                   12110  error: 0.55624  time: 21.93 secs</code></pre>
 <pre class="r"><code>res5&lt;-neuralnet::compute(n5,testers[,5:174])
 qualify(round(res5$net.result),testers$Recommendation)</code></pre>
 <pre><code>## [1] &quot;100%&quot;</code></pre>
 <p>100% with just 5 artificial neurons? Suspicious! What about just 1?</p>
 <pre class="r"><code>n2&lt;-bins.nn(trainers,rep=1,hidden=c(1),threshold=0.02)</code></pre>
-<pre><code>## hidden: 1    thresh: 0.02    rep: 1/1    steps:    1166  error: 26.4794  time: 0.94 secs</code></pre>
+<pre><code>## hidden: 1    thresh: 0.02    rep: 1/1    steps:    1166  error: 26.4794  time: 0.91 secs</code></pre>
 <pre class="r"><code>res2&lt;-neuralnet::compute(n2,testers[,5:174])
 qualify(round(res2$net.result),testers$Recommendation)</code></pre>
 <pre><code>## [1] &quot;90%&quot;</code></pre>
-<p>90% Well… Perhaps rating matters after all? Let’s kill it in the test set and see.</p>
+<p>90% for a single neuron? Interesting.</p>
+<p>OK, back to 5 neurons.<br />Let’s check - perhaps rating matters after all?<br />Let’s wipe it out of the test set and see.</p>
 <pre class="r"><code>testers$Rating&lt;-0
 res5&lt;-neuralnet::compute(n5,testers[,5:174])
 qualify(round(res5$net.result),testers$Recommendation)</code></pre>
 <pre><code>## [1] &quot;100%&quot;</code></pre>
-<p>Still 100% with 5 neurons, even without the rating. Perhaps it’s price? Let’s withdraw markers of average price from inputs.</p>
+<p>Still 100% with 5 neurons, even without the rating.<br />Perhaps it’s price? Let’s withdraw markers of average price from inputs.</p>
 <pre class="r"><code>testers$Price.Average&lt;-0
 res5&lt;-neuralnet::compute(n5,testers[,5:174])
 qualify(round(res5$net.result),testers$Recommendation)</code></pre>
 <pre><code>## [1] &quot;100%&quot;</code></pre>
-<p>100% I’ve seen lower values with a different seed (neural net is initialized with starting random weights, and so there’s some luck, which can be increased in a matter of speaking by bumping rep argument - i.e. number of times the teaching process is re-run), but continue… Let’s hide low price markers.</p>
+<p>100%<br />I’ve seen lower values with a different seed (neural net is initialized with starting random weights, and so there’s some luck, which can be increased in a matter of speaking by bumping rep argument - i.e. number of times the teaching process is re-run), but continue… Let’s hide low price markers.</p>
 <pre class="r"><code>testers$Price.Low&lt;-0
 res5&lt;-neuralnet::compute(n5,testers[,5:174])
 qualify(round(res5$net.result),testers$Recommendation)</code></pre>
 <pre><code>## [1] &quot;92%&quot;</code></pre>
-<p>92% make some sense - supposedly low price would indeed result in better sales. Finally, let’s remove high price markers.</p>
+<p>92% make some sense - supposedly low price would indeed result in better sales.<br />Finally, let’s remove high price markers.</p>
 <pre class="r"><code>testers$Price.High&lt;-0
 res5&lt;-neuralnet::compute(n5,testers[,5:174])
 qualify(round(res5$net.result),testers$Recommendation)</code></pre>
@@ -616,7 +617,10 @@ ww();w[which.min(w)]=max(w)</code></pre>
 <li>Check for NAs and handle them</li>
 <li>See if low/Low spelling difference is something frequent, check other columns for spelling differences, unify</li>
 <li>Find out why R-downloaded file is broken</li>
-<li>Time neural net training times for demonstration purpose (for my PC’s power)</li>
+<li><del>
+Time neural net training times for demonstration purpose (for my PC’s power)
+</del>
+neuralnet() shows it automatically.</li>
 <li><del>
 Apply neuralnet()
 </del></li>
